@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* Plan: OnlyFlex Midnight (same as the rwf-tracker page). One dark world, single theme by choice.
-   Layout: summary strip, then the race (one lane per character, class icon x = level), then one character's climb. */
+   Layout: summary strip, class tally, then the race (one lane per character, class icon x = level); a lane opens its climb chart under it. */
 :root {
   --bg: #0B0B0D;
   --card: #151515;
@@ -81,11 +81,15 @@ header { display: grid; gap: 2px; }
   border-radius: 12px; padding: 6px 8px; cursor: pointer; border-left: 3px solid transparent;
 }
 .lane:hover { background: var(--card-2); }
-.lane[aria-pressed="true"] { background: var(--card-2); border-left-color: var(--accent); }
+.lane[aria-expanded="true"] { background: var(--card-2); border-left-color: var(--accent); border-radius: 12px 12px 0 0; }
+.caret { display: inline-block; width: 6px; height: 6px; margin: 0 0 3px 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+.lane[aria-expanded="true"] .caret { transform: rotate(225deg) translate(-2px, -2px); border-color: var(--accent); }
+.climb { background: var(--card-2); border-left: 3px solid var(--accent); border-radius: 0 0 12px 12px; padding: 4px 14px 14px; margin-top: -6px; }
+.climb[hidden] { display: none; }
 .lane[hidden] { display: none; }
 .who { display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; align-items: baseline; min-width: 0; }
 .rank { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; }
-.name { font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+.name { font-weight: 800; font-size: 15px; overflow-wrap: anywhere; color: var(--nc, inherit); }
 .meta { grid-column: 2; color: var(--muted); font-size: 12.5px; }
 .track { position: relative; height: 44px; background: var(--lane); border-radius: 10px; overflow: hidden; }
 .track .inner { position: absolute; inset: 0 26px 0 18px; }
@@ -114,15 +118,17 @@ img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; b
 
 .charthead { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; justify-content: space-between; }
 .charthead p { margin: 4px 0 0; color: var(--ink-2); font-size: 13.5px; }
-.cardsub { margin: 4px 0 14px; color: var(--muted); font-size: 13px; }
-.tally { display: grid; gap: 10px; }
-.trow { display: grid; grid-template-columns: 130px minmax(0, 1fr) 30px 230px; gap: 12px; align-items: center; }
-.tcls { display: flex; gap: 9px; align-items: center; font-weight: 700; font-size: 14px; }
-.tbar { height: 10px; border-radius: 0 4px 4px 0; background: rgba(255,255,255,0.04); }
-.tfill { height: 100%; border-radius: 0 4px 4px 0; min-width: 0; }
-.tn { font-family: var(--font-display); font-weight: 800; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
-.tlead { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trow.none .tcls, .trow.none .tn { color: var(--muted); }
+.tallyhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 10px; }
+.tallyhead h2 { font-size: 16px; }
+.tallyhead p { margin: 0; color: var(--muted); font-size: 13px; }
+.tally { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.tchip { background: var(--card-2); border-radius: 10px; padding: 7px 9px 8px; display: grid; gap: 5px; min-width: 0; }
+.tchip .top { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
+.tchip .top span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn { font-family: var(--font-display); font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
+.tbar { height: 4px; border-radius: 0 4px 4px 0; background: rgba(255,255,255,0.05); }
+.tfill { height: 100%; border-radius: 0 4px 4px 0; }
+.tchip.none { opacity: 0.55; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
 .legend span { display: inline-flex; gap: 6px; align-items: center; }
 .sw { width: 18px; height: 0; border-top: 2px solid; display: inline-block; }
@@ -153,8 +159,6 @@ img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; b
   .nums .chips { margin-top: 0; }
   .row > .track, .row > .axiscell { grid-area: track; }
   .axis .spacer { display: none; }
-  .trow { grid-template-columns: 105px minmax(0, 1fr) 26px; row-gap: 3px; }
-  .tlead { grid-column: 1 / -1; }
   h1 { font-size: 28px; }
 }
 @media (max-width: 420px) {
@@ -177,36 +181,35 @@ img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; b
 
   <section class="tiles" id="tiles" aria-label="Summary"></section>
 
+  <section class="card" aria-labelledby="tally-h">
+    <div class="tallyhead"><h2 id="tally-h">Class tally</h2><p id="tally-p"></p></div>
+    <div class="tally" id="tally"></div>
+  </section>
+
   <section class="card" aria-labelledby="race-h">
     <div class="racehead">
       <div>
         <h2 id="race-h">The race</h2>
-        <p>Each icon sits at its character's level. The trail behind it is the last 24 hours. Pick a lane to chart it below.</p>
+        <p>Each icon sits at its character's level. The trail behind it is the last 24 hours. Tap a name to open their climb chart.</p>
       </div>
     </div>
     <div class="lanes" id="lanes"></div>
+    <div class="climb" id="climb" hidden role="region" aria-labelledby="climb-h">
+      <div class="charthead">
+        <div>
+          <h2 id="climb-h"></h2>
+          <p id="climb-p"></p>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="chartbox" id="chartbox">
+        <svg id="chart" role="img" aria-labelledby="climb-h climb-p"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+    </div>
     <button class="btn ghost more" id="more" type="button" hidden></button>
   </section>
 
-  <section class="card" aria-labelledby="climb-h">
-    <div class="charthead">
-      <div>
-        <h2 id="climb-h"></h2>
-        <p id="climb-p"></p>
-      </div>
-      <div class="legend" id="legend"></div>
-    </div>
-    <div class="chartbox" id="chartbox">
-      <svg id="chart" role="img" aria-labelledby="climb-h climb-p"></svg>
-      <div class="tip" id="tip"></div>
-    </div>
-  </section>
-
-  <section class="card" aria-labelledby="tally-h">
-    <h2 id="tally-h">Class tally</h2>
-    <p class="cardsub" id="tally-p"></p>
-    <div class="tally" id="tally"></div>
-  </section>
 
   <section class="how" aria-label="How the numbers work">
     <div>
@@ -295,6 +298,9 @@ const GLYPHS = {
 };
 const ICONS = DATA.icons || {};   // Blizzard's class icons, embedded by build.py; the glyphs are the fallback
 const classColor = cls => CLASS_COLORS[cls] || CLASS_COLORS.Unknown;
+// Name text in class color; Shaman's blue is lifted a little so it stays readable on the dark lanes.
+const TEXT_COLORS = { Shaman: "#2E8BF0" };
+const nameColor = cls => TEXT_COLORS[cls] || classColor(cls);
 const miniIcon = cls => ICONS[cls] ? `<img class="mini" src="${ICONS[cls]}" alt="" style="--c:${classColor(cls)}">`
   : `<span class="dot" style="background:${classColor(cls)}"></span>`;
 function classIcon(r, resting) {
@@ -338,9 +344,9 @@ lanesEl.innerHTML =
   racers.map((r, i) => {
     const chip = r.trend === "up" ? `<span class="chip up">▲ Speeding up</span>`
       : r.trend === "break" ? `<span class="chip rest">On a break</span>` : "";
-    return `<button class="lane row" type="button" data-i="${i}" aria-pressed="${i === 0}" ${i >= SHOW_FIRST ? "hidden" : ""}
+    return `<button class="lane row" type="button" data-i="${i}" aria-expanded="false" aria-controls="climb" ${i >= SHOW_FIRST ? "hidden" : ""}
         aria-label="${esc(r.name)}, ${r.cls}, level ${r.lvl}, ${etaText(r)}">
-      <div class="who"><span class="rank">${i + 1}</span><span class="name">${esc(r.name)}</span>
+      <div class="who"><span class="rank">${i + 1}</span><span class="name" style="--nc:${nameColor(r.cls)}">${esc(r.name)}<span class="caret" aria-hidden="true"></span></span>
         <span class="meta">${r.cls} · ${seenText(r)}</span></div>
       <div class="track"><div class="inner">
         ${TICKS.slice(1, -1).map(L => `<div class="grid" style="left:${xPct(L)}%"></div>`).join("")}
@@ -478,11 +484,19 @@ function drawChart() {
   });
   hit.addEventListener("mouseleave", () => { hover.style.display = "none"; tip.style.display = "none"; });
 }
+// A lane opens the climb chart right under itself; the same lane closes it again.
+const climb = document.getElementById("climb");
 laneEls.forEach((el, i) => el.addEventListener("click", () => {
-  selected = i; laneEls.forEach((e, j) => e.setAttribute("aria-pressed", String(j === i))); drawChart();
+  const closing = !climb.hidden && selected === i;
+  laneEls.forEach(e => e.setAttribute("aria-expanded", "false"));
+  if (closing) { climb.hidden = true; return; }
+  selected = i;
+  el.after(climb);
+  climb.hidden = false;
+  el.setAttribute("aria-expanded", "true");
+  drawChart();
 }));
-drawChart();
-let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!climb.hidden) drawChart(); }, 120); });
 
 // ---------- Class tally (every Forever class, most-played first; racers are already in race order) ----------
 (function tally() {
@@ -498,14 +512,10 @@ let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTime
   document.getElementById("tally-p").textContent =
     `${racers.length} characters across ${rows.filter(r => r.n).length} classes. ${lead}`;
   document.getElementById("tally").innerHTML = rows.map(r => {
-    const lead = !r.n ? "nobody yet"
-      : `top: ${esc(r.top.name)}, level ${r.top.lvl}${r.at60 ? ` · ${r.at60} at 60` : ""}`;
     const label = `${r.cls}: ${r.n} character${r.n === 1 ? "" : "s"}${r.n ? `, top ${r.top.name} at level ${r.top.lvl}` : ""}`;
-    return `<div class="trow${r.n ? "" : " none"}" title="${esc(label)}">
-      <div class="tcls">${miniIcon(r.cls)}${r.cls}</div>
+    return `<div class="tchip${r.n ? "" : " none"}" title="${esc(label)}" aria-label="${esc(label)}">
+      <div class="top">${miniIcon(r.cls)}<span>${r.cls}</span><span class="tn">${r.n}</span></div>
       <div class="tbar" aria-hidden="true"><div class="tfill" style="width:${(r.n / max) * 100}%;background:${classColor(r.cls)}"></div></div>
-      <div class="tn">${r.n}</div>
-      <div class="tlead">${lead}</div>
     </div>`;
   }).join("");
 })();
