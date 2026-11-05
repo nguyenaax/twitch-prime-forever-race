@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twitch Prime Race to 60</title>
+<meta property="og:title" content="Twitch Prime Race to 60">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: OnlyFlex Midnight (same as the rwf-tracker page). One dark world, single theme by choice.
+   Layout: summary strip, then the race (one lane per character, class icon x = level), then one character's climb. */
+:root {
+  --bg: #0B0B0D;
+  --card: #151515;
+  --card-2: #1C1C21;
+  --line: #2A2A31;
+  --ink: #F2F2F4;
+  --ink-2: #B9B9C2;
+  --muted: #8A8A95;
+  --accent: #38C1FC;
+  --lane: rgba(255, 255, 255, 0.035);
+  --good: #4ADE80;
+  --warn: #F5B942;
+  --font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-weight: 500;
+  font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+h1, h2 { font-family: var(--font-display); font-weight: 800; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: 34px; line-height: 1.1; }
+h2 { font-size: 19px; }
+.eyebrow { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.sub { color: var(--ink-2); margin-top: 6px; }
+.mocknote {
+  display: inline-flex; gap: 8px; align-items: center; margin-top: 12px;
+  border: 1px dashed var(--line); border-radius: 12px; padding: 5px 12px; color: var(--muted); font-size: 13px;
+}
+.mocknote b { color: var(--warn); font-weight: 700; }
+header { display: grid; gap: 2px; }
+
+.card { background: var(--card); border-radius: 16px; padding: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--card); border-radius: 16px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.tile .k { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.tile .v { font-family: var(--font-display); font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tile .d { color: var(--ink-2); font-size: 13px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+.racehead { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.racehead p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.btn {
+  font: inherit; font-weight: 700; font-size: 13.5px; color: var(--bg); background: var(--accent);
+  border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+.btn:focus-visible, .lane:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.lanes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.row { display: grid; grid-template-columns: 200px minmax(0, 1fr) 262px; gap: 14px; align-items: center; }
+.axis { padding: 0 8px 0 11px; color: var(--muted); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; height: 18px; }
+.axis .scale { position: relative; height: 18px; margin: 0 26px 0 18px; }
+.axis .scale span { position: absolute; transform: translateX(-50%); }
+.lane {
+  font: inherit; color: inherit; text-align: left; background: transparent; border: 0; width: 100%;
+  border-radius: 12px; padding: 6px 8px; cursor: pointer; border-left: 3px solid transparent;
+}
+.lane:hover { background: var(--card-2); }
+.lane[aria-pressed="true"] { background: var(--card-2); border-left-color: var(--accent); }
+.lane[hidden] { display: none; }
+.who { display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; align-items: baseline; min-width: 0; }
+.rank { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; }
+.name { font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+.meta { grid-column: 2; color: var(--muted); font-size: 12.5px; }
+.track { position: relative; height: 44px; background: var(--lane); border-radius: 10px; overflow: hidden; }
+.track .inner { position: absolute; inset: 0 26px 0 18px; }
+.grid { position: absolute; top: 6px; bottom: 6px; width: 1px; background: rgba(255,255,255,0.05); }
+.finish {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 12px;
+  background: repeating-linear-gradient(180deg, #e9e9ee 0 6px, #2a2a31 6px 12px); opacity: 0.55;
+}
+.trail { position: absolute; top: 50%; height: 4px; margin-top: -2px; border-radius: 4px; }
+.icon { position: absolute; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%); }
+img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; box-shadow: 0 0 0 2px var(--c), 0 0 0 4px #151515; }
+.icon.resting { opacity: 0.45; }
+.mini { width: 18px; height: 18px; border-radius: 4px; flex: none; box-shadow: 0 0 0 1.5px var(--c); }
+.stats { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; }
+.lvl { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; text-align: right; min-width: 36px; }
+.gain { color: var(--ink-2); font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.chip {
+  font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+  border: 1px solid var(--line); color: var(--ink-2);
+}
+.chip.up { color: var(--good); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
+.chip.rest { color: var(--muted); border-style: dashed; }
+.more { margin-top: 10px; }
+.more[hidden] { display: none; }
+
+.charthead { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; justify-content: space-between; }
+.charthead p { margin: 4px 0 0; color: var(--ink-2); font-size: 13.5px; }
+.cardsub { margin: 4px 0 14px; color: var(--muted); font-size: 13px; }
+.tally { display: grid; gap: 10px; }
+.trow { display: grid; grid-template-columns: 130px minmax(0, 1fr) 30px 230px; gap: 12px; align-items: center; }
+.tcls { display: flex; gap: 9px; align-items: center; font-weight: 700; font-size: 14px; }
+.tbar { height: 10px; border-radius: 0 4px 4px 0; background: rgba(255,255,255,0.04); }
+.tfill { height: 100%; border-radius: 0 4px 4px 0; min-width: 0; }
+.tn { font-family: var(--font-display); font-weight: 800; font-size: 17px; text-align: right; font-variant-numeric: tabular-nums; }
+.tlead { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trow.none .tcls, .trow.none .tn { color: var(--muted); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 18px; height: 0; border-top: 2px solid; display: inline-block; }
+.sw.dash { border-top-style: dashed; }
+.chartbox { position: relative; margin-top: 10px; }
+.chartbox svg { display: block; width: 100%; height: 290px; }
+.tip {
+  position: absolute; pointer-events: none; background: #0F0F12; border: 1px solid var(--line); border-radius: 10px;
+  padding: 7px 10px; font-size: 12.5px; line-height: 1.35; display: none; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.tip b { font-weight: 800; }
+
+.how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.how div { background: var(--card); border-radius: 16px; padding: 14px 16px; }
+.how h3 { margin: 0 0 4px; font-size: 14px; font-weight: 800; font-family: var(--font-display); }
+.how p { margin: 0; color: var(--ink-2); font-size: 13.5px; }
+
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .how { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who lvl" "track track" "nums nums"; row-gap: 6px; }
+  .row > .who { grid-area: who; }
+  .row > .stats { display: contents; }
+  .lvl { grid-area: lvl; }
+  .nums { grid-area: nums; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .nums .chips { margin-top: 0; }
+  .row > .track, .row > .axiscell { grid-area: track; }
+  .axis .spacer { display: none; }
+  .trow { grid-template-columns: 105px minmax(0, 1fr) 26px; row-gap: 3px; }
+  .tlead { grid-column: 1 / -1; }
+  h1 { font-size: 28px; }
+}
+@media (max-width: 420px) {
+  .tiles { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1>Race to 60</h1>
+    <div class="sub" id="asof"></div>
+    <div id="mocknote" hidden><span class="mocknote"><b>Mockup</b> Made-up guild and characters. Levels are simulated hourly snapshots from launch night to Saturday 9 PM ET.</span></div>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Summary"></section>
+
+  <section class="card" aria-labelledby="race-h">
+    <div class="racehead">
+      <div>
+        <h2 id="race-h">The race</h2>
+        <p>Each icon sits at its character's level. The trail behind it is the last 24 hours. Pick a lane to chart it below.</p>
+      </div>
+    </div>
+    <div class="lanes" id="lanes"></div>
+    <button class="btn ghost more" id="more" type="button" hidden></button>
+  </section>
+
+  <section class="card" aria-labelledby="climb-h">
+    <div class="charthead">
+      <div>
+        <h2 id="climb-h"></h2>
+        <p id="climb-p"></p>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="chartbox" id="chartbox">
+      <svg id="chart" role="img" aria-labelledby="climb-h climb-p"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="tally-h">
+    <h2 id="tally-h">Class tally</h2>
+    <p class="cardsub" id="tally-p"></p>
+    <div class="tally" id="tally"></div>
+  </section>
+
+  <section class="how" aria-label="How the numbers work">
+    <div>
+      <h3>Where levels come from</h3>
+      <p>Once an hour, the guild roster is read from the Battle.net API. Each read is a snapshot, and the snapshots are the history behind the trails, the climb chart and the projections.</p>
+    </div>
+    <div>
+      <h3>Icons move on logout</h3>
+      <p>Blizzard's character data usually refreshes when a player logs out, so an icon can sit still through a long session and jump forward when they log off or take a break.</p>
+    </div>
+    <div>
+      <h3>Pace is counted in XP</h3>
+      <p>Level 59 to 60 takes about 28 times the XP of level 10 to 11 (vanilla's XP table, standing in for Forever's). The ETA assumes the last 24 hours' pace holds, sleep included.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA = {"guild":"Twitch Prime","ruleset":"PvP","launch":1793833200000,"asOf":1793899712137,"mock":false,"xp":[0,400,900,1400,2100,2800,3600,4500,5400,6500,7600,8800,10100,11400,12900,14400,16000,17700,19400,21300,23200,25200,27300,29400,31700,34000,36400,38900,41400,44300,47400,50800,54500,58600,62800,67100,71600,76100,80800,85700,90700,95800,101000,106300,111800,117500,123200,129100,135100,141200,147500,153900,160400,167100,173900,180800,187900,195000,202300,209800],"racers":[{"name":"Nerf Tank","cls":"Paladin","series":[[1793862668422,14],[1793892583992,21],[1793896112763,22],[1793899712137,22]],"lastSeen":1793894740000,"seenKind":"logout","lvl":22,"gain24":8,"rate":14587.089874760131,"eta":1794851212410,"trend":null},{"name":"Ai Hoshino","cls":"Rogue","series":[[1793862668422,14],[1793892583992,21],[1793899712137,21]],"lastSeen":1793885192000,"seenKind":"logout","lvl":21,"gain24":7,"rate":12138.091441422654,"eta":1795050973854,"trend":null},{"name":"Rz Druid","cls":"Druid","series":[[1793862668422,14],[1793892583992,21],[1793899712137,21]],"lastSeen":1793888112000,"seenKind":"logout","lvl":21,"gain24":7,"rate":12138.091441422654,"eta":1795050973854,"trend":null},{"name":"Se\u00f1or Sloppo","cls":"Shaman","series":[[1793862668422,14],[1793892583992,21],[1793899712137,21]],"lastSeen":1793879597000,"seenKind":"logout","lvl":21,"gain24":7,"rate":12138.091441422654,"eta":1795050973854,"trend":null},{"name":"Tinys Mingree","cls":"Druid","series":[[1793862668422,12],[1793892583992,19],[1793896112763,20],[1793899712137,20]],"lastSeen":1793895255000,"seenKind":"logout","lvl":20,"gain24":8,"rate":11972.881229649887,"eta":1795074136215,"trend":null},{"name":"Banshers Trueshot","cls":"Hunter","series":[[1793862668422,15],[1793892583992,20],[1793899712137,20]],"lastSeen":1793880713000,"seenKind":"logout","lvl":20,"gain24":5,"rate":8629.804003189205,"eta":1795529093290,"trend":null},{"name":"Alcolol Curry","cls":"Warlock","series":[[1793862668422,12],[1793892583992,18],[1793899712137,18]],"lastSeen":1793872152000,"seenKind":"logout","lvl":18,"gain24":6,"rate":8017.554394854836,"eta":1795672646787,"trend":null},{"name":"Garbagemanx Prime","cls":"Rogue","series":[[1793862668422,12],[1793892583992,18],[1793899712137,18]],"lastSeen":1793872443000,"seenKind":"logout","lvl":18,"gain24":6,"rate":8017.554394854836,"eta":1795672646787,"trend":null},{"name":"Phu Prime","cls":"Priest","series":[[1793862668422,12],[1793892583992,18],[1793899712137,18]],"lastSeen":1793873512000,"seenKind":"logout","lvl":18,"gain24":6,"rate":8017.554394854836,"eta":1795672646787,"trend":null},{"name":"Tason Bourne","cls":"Hunter","series":[[1793862668422,10],[1793892583992,17],[1793899712137,17]],"lastSeen":1793878234000,"seenKind":"logout","lvl":17,"gain24":7,"rate":7891.217174087426,"eta":1795709493782,"trend":null},{"name":"Koi Soul","cls":"Priest","series":[[1793862668422,12],[1793892583992,17],[1793899712137,17]],"lastSeen":1793875732000,"seenKind":"logout","lvl":17,"gain24":5,"rate":6297.424542867798,"eta":1796167524939,"trend":null},{"name":"Fatcat Meowki","cls":"Shaman","series":[[1793862668422,14],[1793892583992,17],[1793899712137,17]],"lastSeen":1793887716000,"seenKind":"logout","lvl":17,"gain24":3,"rate":4208.001276329871,"eta":1797293575176,"trend":null},{"name":"Under Frost","cls":"Mage","series":[[1793892583992,17],[1793899712137,17]],"lastSeen":1793883055000,"seenKind":"logout","lvl":17,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Buba Shiba","cls":"Shaman","series":[[1793862668422,10],[1793892583992,15],[1793896112763,15],[1793899712137,16]],"lastSeen":1793898242000,"seenKind":"logout","lvl":16,"gain24":6,"rate":6336.297533873155,"eta":1796163185391,"trend":null},{"name":"Yoki Doki","cls":"Priest","series":[[1793862668422,12],[1793892583992,16],[1793899712137,16]],"lastSeen":1793886958000,"seenKind":"logout","lvl":16,"gain24":4,"rate":4742.504902653527,"eta":1796923860829,"trend":null},{"name":"Chatgpt Claude","cls":"Shaman","series":[[1793862668422,10],[1793892583992,15],[1793899712137,15]],"lastSeen":1793877024000,"seenKind":"logout","lvl":15,"gain24":5,"rate":4936.869857680311,"eta":1796815883803,"trend":null},{"name":"Cultz Qt","cls":"Warlock","series":[[1793862668422,12],[1793892583992,15],[1793899712137,15]],"lastSeen":1793864577000,"seenKind":"logout","lvl":15,"gain24":3,"rate":3343.077226460683,"eta":1798206151690,"trend":null},{"name":"Oshalla Farseer","cls":"Priest","series":[[1793862668422,12],[1793892583992,15],[1793899712137,15]],"lastSeen":1793878326000,"seenKind":"logout","lvl":15,"gain24":3,"rate":3343.077226460683,"eta":1798206151690,"trend":null},{"name":"Kev Xh","cls":"Hunter","series":[[1793862668422,15],[1793899712137,15]],"lastSeen":1793860686000,"seenKind":"logout","lvl":15,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Mav Erris","cls":"Priest","series":[[1793862668422,15],[1793899712137,15]],"lastSeen":1793861303000,"seenKind":"logout","lvl":15,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Same Shootas","cls":"Hunter","series":[[1793862668422,15],[1793899712137,15]],"lastSeen":1793857815000,"seenKind":"logout","lvl":15,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Helena Keller","cls":"Priest","series":[[1793862668422,7],[1793892583992,14],[1793899712137,14]],"lastSeen":1793876257000,"seenKind":"logout","lvl":14,"gain24":7,"rate":5277.008528977182,"eta":1796637229031,"trend":null},{"name":"Vio Ivory","cls":"Priest","series":[[1793862668422,7],[1793892583992,14],[1793899712137,14]],"lastSeen":1793871178000,"seenKind":"logout","lvl":14,"gain24":7,"rate":5277.008528977182,"eta":1796637229031,"trend":null},{"name":"Asuna Qtt","cls":"Mage","series":[[1793862668422,12],[1793892583992,14],[1793899712137,14]],"lastSeen":1793867568000,"seenKind":"logout","lvl":14,"gain24":2,"rate":2089.423266537927,"eta":1800813533874,"trend":null},{"name":"Bryyze Lightwind","cls":"Druid","series":[[1793862668422,14],[1793899712137,14]],"lastSeen":1793860135000,"seenKind":"logout","lvl":14,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"James Salis","cls":"Warrior","series":[[1793862668422,14],[1793899712137,14]],"lastSeen":1793859415000,"seenKind":"logout","lvl":14,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Sytex Plus","cls":"Hunter","series":[[1793862668422,14],[1793899712137,14]],"lastSeen":1793882096000,"seenKind":"logout","lvl":14,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Tony Thickthighs","cls":"Paladin","series":[[1793862668422,14],[1793899712137,14]],"lastSeen":1793897393000,"seenKind":"logout","lvl":14,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Zagazow Borededed","cls":"Rogue","series":[[1793862668422,14],[1793899712137,14]],"lastSeen":1793887883000,"seenKind":"logout","lvl":14,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Bosh Zugzug","cls":"Hunter","series":[[1793862668422,11],[1793892583992,13],[1793899712137,13]],"lastSeen":1793862693000,"seenKind":"logout","lvl":13,"gain24":2,"rate":1836.7488250031079,"eta":1801788455444,"trend":null},{"name":"Soul Skyfallen","cls":"Rogue","series":[[1793862668422,12],[1793896112763,12],[1793899712137,13]],"lastSeen":1793897815000,"seenKind":"logout","lvl":13,"gain24":1,"rate":981.5430228852587,"eta":1808661815949,"trend":null},{"name":"Che Ezy","cls":"Warrior","series":[[1793892583992,13],[1793899712137,13]],"lastSeen":1793873008000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Mace Thickthighs","cls":"Warrior","series":[[1793862668422,13],[1793899712137,13]],"lastSeen":1793858173000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Raised Floyd","cls":"Rogue","series":[[1793862668422,13],[1793899712137,13]],"lastSeen":1793857822000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Xp Mental","cls":"Paladin","series":[[1793892583992,13],[1793899712137,13]],"lastSeen":1793895732000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Zaveg Cowwhisperer","cls":"Hunter","series":[[1793862668422,13],[1793899712137,13]],"lastSeen":1793861298000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Zesu Tempest","cls":"Paladin","series":[[1793862668422,13],[1793899712137,13]],"lastSeen":1793852155000,"seenKind":"logout","lvl":13,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Pizza Princ\u00e9","cls":"Mage","series":[[1793862668422,10],[1793892583992,12],[1793899712137,12]],"lastSeen":1793862720000,"seenKind":"logout","lvl":12,"gain24":2,"rate":1593.792631219628,"eta":1803015289480,"trend":null},{"name":"Xephos Lock","cls":"Warlock","series":[[1793862668422,11],[1793896112763,11],[1793899712137,12]],"lastSeen":1793896779000,"seenKind":"logout","lvl":12,"gain24":1,"rate":855.2058021178491,"eta":1810887833550,"trend":null},{"name":"Cqu Qu","cls":"Warlock","series":[[1793862668422,12],[1793899712137,12]],"lastSeen":1793857048000,"seenKind":"logout","lvl":12,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Gandilf Thickthighs","cls":"Mage","series":[[1793862668422,12],[1793899712137,12]],"lastSeen":1793857367000,"seenKind":"logout","lvl":12,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Klamath Thickthighs","cls":"Warrior","series":[[1793862668422,12],[1793899712137,12]],"lastSeen":1793862263000,"seenKind":"logout","lvl":12,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Osh Ley","cls":"Priest","series":[[1793862668422,12],[1793899712137,12]],"lastSeen":1793853248000,"seenKind":"logout","lvl":12,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Lyger Xd","cls":"Hunter","series":[[1793862668422,6],[1793892583992,11],[1793899712137,11]],"lastSeen":1793868843000,"seenKind":"logout","lvl":11,"gain24":5,"rate":2682.2363793696177,"eta":1799328898062,"trend":null},{"name":"Jack Mihada","cls":"Mage","series":[[1793862668422,9],[1793892583992,11],[1793899712137,11]],"lastSeen":1793862865000,"seenKind":"logout","lvl":11,"gain24":2,"rate":1370.2729329388264,"eta":1804527054799,"trend":null},{"name":"Athleen Halmar","cls":"Paladin","series":[[1793892583992,11],[1793899712137,11]],"lastSeen":1793856152000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Brugga Borgus","cls":"Hunter","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793857987000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Brugita Borgita","cls":"Priest","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793880117000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Jx Sx","cls":"Rogue","series":[[1793892583992,10],[1793896112763,10],[1793899712137,11]],"lastSeen":1793897860000,"seenKind":"logout","lvl":11,"gain24":1,"rate":null,"eta":null,"trend":null},{"name":"Rue Lupinus","cls":"Druid","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793856733000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Siber Jax","cls":"Shaman","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793864695000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Soulbob Thickthighs","cls":"Warlock","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793849409000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Xeek Pizza","cls":"Paladin","series":[[1793862668422,11],[1793899712137,11]],"lastSeen":1793874056000,"seenKind":"logout","lvl":11,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Daddy Reckon","cls":"Paladin","series":[[1793862668422,3],[1793892583992,10],[1793899712137,10]],"lastSeen":1793872624000,"seenKind":"logout","lvl":10,"gain24":7,"rate":2555.899158602208,"eta":1799608810616,"trend":null},{"name":"Icona Skyheart","cls":"Hunter","series":[[1793862668422,7],[1793892583992,10],[1793899712137,10]],"lastSeen":1793884850000,"seenKind":"logout","lvl":10,"gain24":3,"rate":1593.792631219628,"eta":1803055156649,"trend":null},{"name":"Vasectomy Jaywalker","cls":"Priest","series":[[1793862668422,7],[1793892583992,10],[1793899712137,10]],"lastSeen":1793866281000,"seenKind":"logout","lvl":10,"gain24":3,"rate":1593.792631219628,"eta":1803055156649,"trend":null},{"name":"Encision Bloodrage","cls":"Warlock","series":[[1793862668422,10],[1793899712137,10]],"lastSeen":1793897024000,"seenKind":"logout","lvl":10,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Zoetic Lockset","cls":"Rogue","series":[[1793892583992,9],[1793899712137,9]],"lastSeen":null,"seenKind":"levelup","lvl":9,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Sil Bon","cls":"Mage","series":[[1793862668422,2],[1793892583992,8],[1793899712137,8]],"lastSeen":1793892583992,"seenKind":"levelup","lvl":8,"gain24":6,"rate":1486.8919059548969,"eta":1803744866274,"trend":null},{"name":"Akuwu Billyfanboy","cls":"Mage","series":[[1793892583992,8],[1793899712137,8]],"lastSeen":null,"seenKind":"levelup","lvl":8,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Biglips Thickthighs","cls":"Rogue","series":[[1793862668422,8],[1793899712137,8]],"lastSeen":null,"seenKind":"levelup","lvl":8,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Forsaken Lawgiver","cls":"Paladin","series":[[1793862668422,8],[1793899712137,8]],"lastSeen":null,"seenKind":"levelup","lvl":8,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Gigachad Mogger","cls":"Warlock","series":[[1793862668422,8],[1793899712137,8]],"lastSeen":null,"seenKind":"levelup","lvl":8,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Baja Fresh","cls":"Shaman","series":[[1793862668422,5],[1793892583992,7],[1793899712137,7]],"lastSeen":1793892583992,"seenKind":"levelup","lvl":7,"gain24":2,"rate":621.9678560857085,"eta":1817464434745,"trend":null},{"name":"Bum Borne","cls":"Druid","series":[[1793862668422,5],[1793892583992,7],[1793899712137,7]],"lastSeen":1793892583992,"seenKind":"levelup","lvl":7,"gain24":2,"rate":621.9678560857085,"eta":1817464434745,"trend":null},{"name":"Hiro Borne","cls":"Hunter","series":[[1793862668422,5],[1793892583992,7],[1793899712137,7]],"lastSeen":1793892583992,"seenKind":"levelup","lvl":7,"gain24":2,"rate":621.9678560857085,"eta":1817464434745,"trend":null},{"name":"Bizz Bizzy","cls":"Shaman","series":[[1793892583992,6],[1793899712137,6]],"lastSeen":null,"seenKind":"levelup","lvl":6,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Demetrius Br","cls":"Warrior","series":[[1793892583992,6],[1793899712137,6]],"lastSeen":null,"seenKind":"levelup","lvl":6,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Bizzy Bizz","cls":"Mage","series":[[1793862668422,1],[1793892583992,5],[1793899712137,5]],"lastSeen":1793892583992,"seenKind":"levelup","lvl":5,"gain24":4,"rate":466.47589206428137,"eta":1825375293726,"trend":null},{"name":"Bird Isword","cls":"Warlock","series":[[1793862668422,4],[1793899712137,4]],"lastSeen":null,"seenKind":"levelup","lvl":4,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Juan Brando","cls":"Priest","series":[[1793892583992,4],[1793899712137,4]],"lastSeen":null,"seenKind":"levelup","lvl":4,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Goon Coommander","cls":"Priest","series":[[1793892583992,3],[1793899712137,3]],"lastSeen":null,"seenKind":"levelup","lvl":3,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Johnny Gelato","cls":"Rogue","series":[[1793892583992,3],[1793899712137,3]],"lastSeen":null,"seenKind":"levelup","lvl":3,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Khao Niew","cls":"Druid","series":[[1793862668422,3],[1793899712137,3]],"lastSeen":null,"seenKind":"levelup","lvl":3,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Buba Kuma","cls":"Priest","series":[[1793862668422,2],[1793899712137,2]],"lastSeen":null,"seenKind":"levelup","lvl":2,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Kev Coin","cls":"Warrior","series":[[1793862668422,1],[1793899712137,1]],"lastSeen":null,"seenKind":"levelup","lvl":1,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Nerftank Bank","cls":"Warrior","series":[[1793862668422,1],[1793899712137,1]],"lastSeen":null,"seenKind":"levelup","lvl":1,"gain24":0,"rate":null,"eta":null,"trend":null},{"name":"Zubat Signature","cls":"Warrior","series":[[1793862668422,1],[1793899712137,1]],"lastSeen":null,"seenKind":"levelup","lvl":1,"gain24":0,"rate":null,"eta":null,"trend":null}],"median":[[1793862668422,11.0],[1793892583992,12.0],[1793896112763,12.0],[1793899712137,12.0]],"icons":{"Warrior":"data:image/jpeg;base64,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","Paladin":"data:image/jpeg;base64,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","Hunter":"data:image/jpeg;base64,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","Rogue":"data:image/jpeg;base64,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","Priest":"data:image/jpeg;base64,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","Shaman":"data:image/jpeg;base64,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","Mage":"data:image/jpeg;base64,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","Warlock":"data:image/jpeg;base64,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","Druid":"data:image/jpeg;base64,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"}};
+const XP = DATA.xp;
+const CUM = [0, 0]; for (let L = 1; L < 60; L++) CUM[L + 1] = CUM[L] + XP[L];
+const HOUR = 3600000, DAY = 24 * HOUR;
+const START = DATA.launch, NOW = DATA.asOf;
+const CLASS_COLORS = { Warrior: "#C69B6D", Paladin: "#F48CBA", Hunter: "#AAD372", Rogue: "#FFF468", Priest: "#FFFFFF",
+  Shaman: "#0070DD", Mage: "#3FC7EB", Warlock: "#8788EE", Druid: "#FF7C0A", Unknown: "#8A8A95" };
+const LIGHT_GLYPH = { Shaman: true };
+const SHOW_FIRST = 25;
+const racers = DATA.racers.map(r => ({ ...r, color: CLASS_COLORS[r.cls] || CLASS_COLORS.Unknown }));
+
+// ---------- Formatting (viewer's own time zone) ----------
+const when = ms => new Date(ms).toLocaleString("en-US", { weekday: "short", hour: "numeric" });
+const longDate = ms => new Date(ms).toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function ago(ms) {
+  const h = (NOW - ms) / HOUR;
+  if (h < 1) return "just now";
+  if (h < 24) return `${Math.round(h)}h ago`;
+  return `since ${when(ms)}`;
+}
+function etaText(r) {
+  if (r.lvl >= 60) return `Hit 60 ${when(r.eta)}`;
+  if (r.eta == null) return "No pace yet";
+  if (r.eta - NOW <= 3 * DAY) return `60 by ${when(r.eta)}`;
+  return `60 in ~${Math.round((r.eta - NOW) / DAY)} days`;
+}
+const seenText = r => r.lastSeen == null ? "no level-up yet"
+  : `${r.seenKind === "logout" ? "logged out" : "last level-up"} ${ago(r.lastSeen)}`;
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+document.getElementById("eyebrow").textContent = `WoW Forever · ${DATA.guild}${DATA.ruleset ? " · " + DATA.ruleset + " realm" : ""}`;
+document.getElementById("asof").textContent =
+  `Day ${Math.max(1, Math.ceil((NOW - START) / DAY))} since launch · as of ${longDate(NOW)} · ${racers.length} racers`;
+document.getElementById("mocknote").hidden = !DATA.mock;
+
+// ---------- Class icons (original glyphs, drawn on a class-colored badge) ----------
+const GLYPHS = {
+  Warrior: `<path d="M5 5L16 16M13.5 18.5L18.5 13.5M16 16L20 20M19 5L8 16M5.5 13.5L10.5 18.5M8 16L4 20" fill="none" stroke="G" stroke-width="2.4" stroke-linecap="round"/>`,
+  Paladin: `<rect x="5.5" y="3" width="13" height="7.5" rx="1.6" fill="G"/><path d="M12 10.5V21.5" stroke="G" stroke-width="3.2" stroke-linecap="round"/>`,
+  Hunter: `<path d="M8 2.5Q21 12 8 21.5" fill="none" stroke="G" stroke-width="2.4" stroke-linecap="round"/><path d="M8 2.5V21.5" stroke="G" stroke-width="1.3"/><path d="M2.5 12H17" stroke="G" stroke-width="2"/><path d="M21.5 12L16.5 8.8V15.2Z" fill="G"/>`,
+  Rogue: `<path d="M12 1.5L14.8 13.5H9.2Z" fill="G"/><path d="M6.5 14.5H17.5" stroke="G" stroke-width="2.4" stroke-linecap="round"/><path d="M12 14.5V19.5" stroke="G" stroke-width="2.8"/><circle cx="12" cy="21" r="1.9" fill="G"/>`,
+  Priest: `<circle cx="12" cy="12" r="4.2" fill="G"/><path d="M12 2.2V5.4M12 18.6V21.8M2.2 12H5.4M18.6 12H21.8M5.1 5.1L7.3 7.3M16.7 16.7L18.9 18.9M18.9 5.1L16.7 7.3M7.3 16.7L5.1 18.9" stroke="G" stroke-width="2" stroke-linecap="round"/>`,
+  Shaman: `<path d="M13.5 1.5L5 13.5H11L9.5 22.5L19 9.5H13Z" fill="G"/>`,
+  Mage: `<path d="M12 1.5L14.2 9.8L22.5 12L14.2 14.2L12 22.5L9.8 14.2L1.5 12L9.8 9.8Z" fill="G"/>`,
+  Warlock: `<path d="M12 2.5C7 2.5 3.8 6.2 3.8 10.4C3.8 13.4 5.4 15.3 7.4 16.2V19.6C7.4 20.5 8.1 21.3 9 21.3H15C15.9 21.3 16.6 20.5 16.6 19.6V16.2C18.6 15.3 20.2 13.4 20.2 10.4C20.2 6.2 17 2.5 12 2.5Z" fill="G"/><circle cx="8.9" cy="10.8" r="2.3" fill="B"/><circle cx="15.1" cy="10.8" r="2.3" fill="B"/><path d="M12 13.4L10.7 15.8H13.3Z" fill="B"/><path d="M10.4 18V21.3M13.6 18V21.3" stroke="B" stroke-width="1.1"/>`,
+  Druid: `<ellipse cx="12" cy="15.8" rx="4.8" ry="4.2" fill="G"/><circle cx="5.6" cy="10.2" r="2.1" fill="G"/><circle cx="9.4" cy="6.3" r="2.2" fill="G"/><circle cx="14.6" cy="6.3" r="2.2" fill="G"/><circle cx="18.4" cy="10.2" r="2.1" fill="G"/>`,
+  Unknown: `<circle cx="12" cy="12" r="3.5" fill="G"/>`,
+};
+const ICONS = DATA.icons || {};   // Blizzard's class icons, embedded by build.py; the glyphs are the fallback
+const classColor = cls => CLASS_COLORS[cls] || CLASS_COLORS.Unknown;
+const miniIcon = cls => ICONS[cls] ? `<img class="mini" src="${ICONS[cls]}" alt="" style="--c:${classColor(cls)}">`
+  : `<span class="dot" style="background:${classColor(cls)}"></span>`;
+function classIcon(r, resting) {
+  if (ICONS[r.cls]) return `<img class="icon${resting ? " resting" : ""}" src="${ICONS[r.cls]}" alt="" style="--c:${r.color}">`;
+  const glyph = LIGHT_GLYPH[r.cls] ? "#F2F2F4" : "#151515";
+  const inner = (GLYPHS[r.cls] || GLYPHS.Unknown).replaceAll('"G"', `"${glyph}"`).replaceAll('"B"', `"${r.color}"`);
+  return `<svg class="icon${resting ? " resting" : ""}" viewBox="0 0 30 30" aria-hidden="true">
+    <circle cx="15" cy="15" r="13.5" fill="${r.color}" stroke="#151515" stroke-width="2"/>
+    <g transform="translate(15 15) scale(0.74) translate(-12 -12)">${inner}</g></svg>`;
+}
+
+// ---------- Summary tiles ----------
+(function tiles() {
+  const withEta = racers.filter(r => r.eta != null).sort((a, b) => a.eta - b.eta);
+  const first = withEta[0];
+  const hot = [...racers].sort((a, b) => b.gain24 - a.gain24)[0];
+  const lv = racers.map(r => r.lvl).sort((a, b) => a - b);
+  const median = lv.length % 2 ? lv[(lv.length - 1) / 2] : (lv[lv.length / 2 - 1] + lv[lv.length / 2]) / 2;
+  const resting = racers.filter(r => r.trend === "break");
+  const names = resting.slice(0, 3).map(r => esc(r.name)).join(", ") + (resting.length > 3 ? ` and ${resting.length - 3} more` : "");
+  const dot = r => miniIcon(r.cls);
+  const t = [
+    ["Projected first to 60", first ? `${dot(first)}${esc(first.name)}` : "Too early to tell",
+      first ? (first.lvl >= 60 ? etaText(first) : `${etaText(first).replace("60 by ", "")} at today's pace`) : "needs a few hours of snapshots"],
+    ["Most levels in 24 hours", hot && hot.gain24 > 0 ? `${dot(hot)}${esc(hot.name)} +${hot.gain24}` : "Nobody yet",
+      hot && hot.gain24 > 0 ? `from level ${hot.lvl - hot.gain24} to ${hot.lvl}` : "levels show up after a logout"],
+    ["Guild median level", `${median}`, `leader ${lv[lv.length - 1]}, back of the pack ${lv[0]}`],
+    ["On a break", resting.length ? names : "Nobody", resting.length ? "no logout in the last day" : "everyone logged out in the last day"],
+  ];
+  document.getElementById("tiles").innerHTML = t.map(([k, v, d]) =>
+    `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join("");
+})();
+
+// ---------- The race ----------
+const xPct = L => ((Math.max(1, Math.min(60, L)) - 1) / 59) * 100;
+const TICKS = [1, 10, 20, 30, 40, 50, 60];
+const lanesEl = document.getElementById("lanes");
+lanesEl.innerHTML =
+  `<div class="row axis" aria-hidden="true"><div class="spacer"></div><div class="axiscell"><div class="scale">${
+    TICKS.map(L => `<span style="left:${xPct(L)}%">${L}</span>`).join("")}</div></div><div class="spacer"></div></div>` +
+  racers.map((r, i) => {
+    const chip = r.trend === "up" ? `<span class="chip up">▲ Speeding up</span>`
+      : r.trend === "break" ? `<span class="chip rest">On a break</span>` : "";
+    return `<button class="lane row" type="button" data-i="${i}" aria-pressed="${i === 0}" ${i >= SHOW_FIRST ? "hidden" : ""}
+        aria-label="${esc(r.name)}, ${r.cls}, level ${r.lvl}, ${etaText(r)}">
+      <div class="who"><span class="rank">${i + 1}</span><span class="name">${esc(r.name)}</span>
+        <span class="meta">${r.cls} · ${seenText(r)}</span></div>
+      <div class="track"><div class="inner">
+        ${TICKS.slice(1, -1).map(L => `<div class="grid" style="left:${xPct(L)}%"></div>`).join("")}
+        <div class="trail" style="background:linear-gradient(90deg, ${rgba(r.color, 0)}, ${rgba(r.color, 0.6)})"></div>
+        ${classIcon(r, r.trend === "break")}
+      </div><div class="finish"></div></div>
+      <div class="stats"><div class="lvl">${r.lvl}</div>
+        <div class="nums"><div class="gain">+${r.gain24} in 24h</div><div class="chips"><span class="chip">${etaText(r)}</span>${chip}</div></div></div>
+    </button>`;
+  }).join("");
+const more = document.getElementById("more");
+if (racers.length > SHOW_FIRST) {
+  more.hidden = false;
+  more.textContent = `Show all ${racers.length} characters`;
+  more.addEventListener("click", () => {
+    const expand = more.dataset.open !== "1";
+    lanesEl.querySelectorAll(".lane").forEach((el, i) => { if (i >= SHOW_FIRST) el.hidden = !expand; });
+    more.dataset.open = expand ? "1" : "0";
+    more.textContent = expand ? `Show the top ${SHOW_FIRST}` : `Show all ${racers.length} characters`;
+  });
+}
+
+const laneEls = [...lanesEl.querySelectorAll(".lane")];
+function levelAt(series, t) {          // linear between stored points, flat before and after
+  if (t <= series[0][0]) return series[0][1];
+  for (let i = 1; i < series.length; i++) {
+    const [t1, l1] = series[i];
+    if (t <= t1) { const [t0, l0] = series[i - 1]; return t1 === t0 ? l1 : l0 + (l1 - l0) * (t - t0) / (t1 - t0); }
+  }
+  return series[series.length - 1][1];
+}
+// Place each icon at its current level, with a trail back to where it was 24 hours ago.
+laneEls.forEach((el, i) => {
+  const r = racers[i];
+  const now = levelAt(r.series, NOW), back = levelAt(r.series, Math.max(START, NOW - DAY));
+  const icon = el.querySelector(".icon"), trail = el.querySelector(".trail");
+  icon.style.left = xPct(now) + "%";
+  trail.style.left = xPct(back) + "%";
+  trail.style.width = Math.max(0, xPct(now) - xPct(back)) + "%";
+});
+
+// ---------- One character's climb ----------
+let selected = 0;
+function levelAtXp(x) { let L = 1; while (L < 60 && CUM[L + 1] <= x) L++; return L; }
+function projection(r, xmax) {
+  if (!(r.rate > 0) || r.lvl >= 60) return [];
+  const pts = [], x0 = CUM[r.lvl] + XP[r.lvl] / 2, step = HOUR / 2;
+  for (let t = NOW; t <= xmax + 1; t += step) {
+    const x = Math.min(CUM[60], x0 + r.rate * (t - NOW) / HOUR);
+    const L = levelAtXp(x);
+    pts.push([t, L >= 60 ? 60 : L + (x - CUM[L]) / XP[L]]);
+    if (x >= CUM[60]) break;
+  }
+  return pts;
+}
+function midnights(a, b) {
+  const out = [], d = new Date(a); d.setHours(24, 0, 0, 0);
+  while (d.getTime() < b) { out.push(d.getTime()); d.setDate(d.getDate() + 1); }
+  return out;
+}
+function drawChart() {
+  const r = racers[selected];
+  const svg = document.getElementById("chart");
+  const W = svg.clientWidth || 800, H = 290, P = { l: 34, r: 18, t: 14, b: 28 };
+  const xmax = r.eta != null && r.lvl < 60 ? Math.min(NOW + 7 * DAY, Math.max(NOW + DAY, r.eta + 6 * HOUR)) : NOW + DAY;
+  const X = t => P.l + ((t - START) / (xmax - START)) * (W - P.l - P.r);
+  const Y = L => P.t + (1 - (L - 1) / 59) * (H - P.t - P.b);
+  const line = pts => pts.map(([t, L], i) => `${i ? "L" : "M"}${X(t).toFixed(1)},${Y(L).toFixed(1)}`).join("");
+  const proj = projection(r, xmax);
+  let g = "";
+  TICKS.forEach(L => {
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(L)}" y2="${Y(L)}" stroke="rgba(255,255,255,${L === 60 ? 0.16 : 0.06})" ${L === 60 ? 'stroke-dasharray="3 4"' : ""}/>`;
+    g += `<text x="${P.l - 8}" y="${Y(L) + 4}" text-anchor="end" fill="#8A8A95" font-size="11" font-weight="700">${L}</text>`;
+  });
+  midnights(START, xmax).forEach(m => {
+    g += `<line x1="${X(m)}" x2="${X(m)}" y1="${P.t}" y2="${H - P.b}" stroke="rgba(255,255,255,0.05)"/>`;
+    g += `<text x="${X(m) + 4}" y="${H - P.b + 17}" fill="#8A8A95" font-size="11" font-weight="700">${new Date(m).toLocaleString("en-US", { weekday: "short" })}</text>`;
+  });
+  g += `<line x1="${X(NOW)}" x2="${X(NOW)}" y1="${P.t}" y2="${H - P.b}" stroke="#38C1FC" stroke-opacity="0.5"/>`;
+  g += `<text x="${X(NOW) - 4}" y="${P.t + 10}" text-anchor="end" fill="#38C1FC" font-size="11" font-weight="800">now</text>`;
+  g += `<path d="${line(DATA.median)}" fill="none" stroke="#8A8A95" stroke-width="2" stroke-opacity="0.8" stroke-linejoin="round"/>`;
+  g += `<path d="${line(r.series)}" fill="none" stroke="${r.color}" stroke-width="2.25" stroke-linejoin="round"/>`;
+  if (proj.length > 1) {
+    g += `<path d="${line(proj)}" fill="none" stroke="${r.color}" stroke-width="2" stroke-dasharray="5 5" stroke-opacity="0.85"/>`;
+    const [te, Le] = proj[proj.length - 1];
+    if (Le >= 60) {
+      g += `<circle cx="${X(te)}" cy="${Y(60)}" r="5" fill="${r.color}" stroke="#151515" stroke-width="2"/>`;
+      const anchor = X(te) > W - 140 ? "end" : "start";
+      g += `<text x="${X(te) + (anchor === "end" ? -9 : 9)}" y="${Y(60) + 16}" text-anchor="${anchor}" fill="#F2F2F4" font-size="12" font-weight="800">60 · ${when(te)}</text>`;
+    } else {
+      g += `<text x="${W - P.r}" y="${Y(Le) - 9}" text-anchor="end" fill="#B9B9C2" font-size="12" font-weight="700">${etaText(r)}</text>`;
+    }
+  }
+  g += `<circle cx="${X(NOW)}" cy="${Y(r.lvl)}" r="4.5" fill="${r.color}" stroke="#151515" stroke-width="2"/>`;
+  g += `<g id="hover" style="display:none"><line id="hx" y1="${P.t}" y2="${H - P.b}" stroke="rgba(255,255,255,0.35)"/>
+        <circle id="hd" r="4.5" fill="${r.color}" stroke="#151515" stroke-width="2"/><circle id="hm" r="4" fill="#8A8A95" stroke="#151515" stroke-width="2"/></g>`;
+  g += `<rect id="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}" fill="transparent"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = g;
+
+  document.getElementById("climb-h").textContent = `${r.name}'s climb`;
+  document.getElementById("climb-p").textContent = r.lvl >= 60 ? `${etaText(r)}.`
+    : r.eta != null ? `Level ${r.lvl} now, +${r.gain24} in the last 24 hours. ${etaText(r)} if that pace holds.`
+    : `Level ${r.lvl}. Not enough level-ups yet to project a pace.`;
+  document.getElementById("legend").innerHTML =
+    `<span><i class="sw" style="border-color:${r.color}"></i>${esc(r.name)}</span>` +
+    (proj.length > 1 ? `<span><i class="sw dash" style="border-color:${r.color}"></i>Projection</span>` : "") +
+    `<span><i class="sw" style="border-color:#8A8A95"></i>Guild median</span>`;
+
+  const tip = document.getElementById("tip"), hover = svg.querySelector("#hover");
+  const hit = svg.querySelector("#hit");
+  hit.addEventListener("mousemove", ev => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (W / rect.width);
+    const t = START + Math.max(0, Math.min(1, (px - P.l) / (W - P.l - P.r))) * (xmax - START);
+    let L, label, med = null;
+    if (t <= NOW) {
+      L = levelAt(r.series, t); med = levelAt(DATA.median, t);
+      label = `${esc(r.name)} <b>${Math.floor(L + 1e-9)}</b>`;
+    } else {
+      const p = proj.find(([pt]) => pt >= t);
+      if (!p) { hover.style.display = "none"; tip.style.display = "none"; return; }
+      L = p[1]; label = `Projected <b>${Math.floor(L)}</b>`;
+    }
+    hover.style.display = "";
+    hover.querySelector("#hx").setAttribute("x1", X(t)); hover.querySelector("#hx").setAttribute("x2", X(t));
+    const hd = hover.querySelector("#hd"); hd.setAttribute("cx", X(t)); hd.setAttribute("cy", Y(L));
+    const hm = hover.querySelector("#hm");
+    if (med != null) { hm.style.display = ""; hm.setAttribute("cx", X(t)); hm.setAttribute("cy", Y(med)); } else hm.style.display = "none";
+    tip.innerHTML = `<div style="color:#8A8A95;font-weight:700">${when(t)}${t > NOW ? " (projected)" : ""}</div><div>${label}</div>${med != null ? `<div>Guild median <b>${Math.round(med * 2) / 2}</b></div>` : ""}`;
+    tip.style.display = "block";
+    const left = (X(t) / W) * rect.width;
+    tip.style.left = Math.min(rect.width - tip.offsetWidth - 4, Math.max(0, left + 12)) + "px";
+    tip.style.top = Math.max(0, (Y(L) / H) * rect.height - 52) + "px";
+  });
+  hit.addEventListener("mouseleave", () => { hover.style.display = "none"; tip.style.display = "none"; });
+}
+laneEls.forEach((el, i) => el.addEventListener("click", () => {
+  selected = i; laneEls.forEach((e, j) => e.setAttribute("aria-pressed", String(j === i))); drawChart();
+}));
+drawChart();
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+
+// ---------- Class tally (every Forever class, most-played first; racers are already in race order) ----------
+(function tally() {
+  const ALL = ["Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid"];
+  const rows = ALL.map(cls => {
+    const mine = racers.filter(r => r.cls === cls);
+    return { cls, n: mine.length, top: mine[0], at60: mine.filter(r => r.lvl >= 60).length };
+  }).sort((a, b) => b.n - a.n || a.cls.localeCompare(b.cls));
+  const max = Math.max(1, ...rows.map(r => r.n));
+  const most = rows.filter(r => r.n && r.n === rows[0].n).map(r => r.cls + "s");
+  const lead = most.length === 1 ? `${most[0]} lead the headcount.`
+    : most.length ? `${most.slice(0, -1).join(", ")} and ${most[most.length - 1]} tie for the most.` : "";
+  document.getElementById("tally-p").textContent =
+    `${racers.length} characters across ${rows.filter(r => r.n).length} classes. ${lead}`;
+  document.getElementById("tally").innerHTML = rows.map(r => {
+    const lead = !r.n ? "nobody yet"
+      : `top: ${esc(r.top.name)}, level ${r.top.lvl}${r.at60 ? ` · ${r.at60} at 60` : ""}`;
+    const label = `${r.cls}: ${r.n} character${r.n === 1 ? "" : "s"}${r.n ? `, top ${r.top.name} at level ${r.top.lvl}` : ""}`;
+    return `<div class="trow${r.n ? "" : " none"}" title="${esc(label)}">
+      <div class="tcls">${miniIcon(r.cls)}${r.cls}</div>
+      <div class="tbar" aria-hidden="true"><div class="tfill" style="width:${(r.n / max) * 100}%;background:${classColor(r.cls)}"></div></div>
+      <div class="tn">${r.n}</div>
+      <div class="tlead">${lead}</div>
+    </div>`;
+  }).join("");
+})();
+</script>
+</body>
+</html>
