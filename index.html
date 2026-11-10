@@ -116,8 +116,13 @@ img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; b
 }
 .chip.up { color: var(--good); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
 .chip.rest { color: var(--muted); border-style: dashed; }
-.dead { display: inline-flex; align-items: center; gap: 3px; margin-left: 10px; color: var(--muted); }
-.dead svg { width: 12px; height: 12px; }
+/* Death counter on each lane: bright and spelled out, so it reads at a glance. */
+.dead { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; color: var(--ink); font-weight: 800; white-space: nowrap; }
+.dead svg { width: 14px; height: 14px; }
+/* The death breakdown under a climb chart, on its own line. */
+.charthead p.deathline { display: flex; gap: 7px; align-items: flex-start; margin-top: 8px; color: var(--ink); font-weight: 700; }
+.charthead p.deathline[hidden] { display: none; }
+.deathline svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
 .more { margin-top: 10px; }
 .more[hidden] { display: none; }
 
@@ -207,6 +212,7 @@ img.icon { width: 28px; height: 28px; border-radius: 7px; background: #151515; b
         <div>
           <h2 id="climb-h"></h2>
           <p id="climb-p"></p>
+          <p id="climb-deaths" class="deathline" hidden></p>
         </div>
         <div class="legend" id="legend"></div>
       </div>
@@ -401,7 +407,7 @@ lanesEl.innerHTML =
       </div><div class="finish"></div></div>
       <div class="stats"><div class="lvl">${r.lvl}</div>
         <div class="nums"><div class="gain">+${r.gain24} in ${r.windowH > 25 ? Math.round(r.windowH) + "h" : "24h"}${
-          r.deaths != null ? `<span class="dead" title="${esc(deathBreakdown(r))}">${SKULL}${num(r.deaths)}</span>` : ""}</div><div class="chips"><span class="chip">${etaText(r)}</span>${chip}</div></div></div>
+          r.deaths != null ? `<span class="dead" title="${esc(deathBreakdown(r))}">${SKULL}${deathText(r)}</span>` : ""}</div><div class="chips"><span class="chip">${etaText(r)}</span>${chip}</div></div></div>
     </button>`;
   }).join("");
 const more = document.getElementById("more");
@@ -499,13 +505,14 @@ function drawChart() {
   svg.innerHTML = g;
 
   document.getElementById("climb-h").textContent = `${r.name}'s climb`;
-  const extras = [
-    r.xp24 > 0 ? `${num(r.xp24)} XP earned in sessions that ended in the last 24 hours.` : "",
-    deathBreakdown(r),
-  ].filter(Boolean).join(" ");
+  const extras = r.xp24 > 0 ? ` ${num(r.xp24)} XP earned in sessions that ended in the last 24 hours.` : "";
   document.getElementById("climb-p").textContent = (r.lvl >= 60 ? `${etaText(r)}.`
     : r.eta != null ? `Level ${r.lvl} now, +${r.gain24} in the last 24 hours. ${etaText(r)} if that pace holds.`
-    : `Level ${r.lvl}. Not enough level-ups yet to project a pace.`) + (extras ? " " + extras : "");
+    : `Level ${r.lvl}. Not enough level-ups yet to project a pace.`) + extras;
+  // The death breakdown gets its own line under the summary, with the skull, so it stands out.
+  const deathsLine = document.getElementById("climb-deaths");
+  deathsLine.hidden = r.deaths == null;
+  deathsLine.innerHTML = r.deaths == null ? "" : `${SKULL}<span>${esc(deathBreakdown(r))}</span>`;
   document.getElementById("legend").innerHTML =
     `<span><i class="sw" style="border-color:${r.color}"></i>${esc(r.name)}</span>` +
     (proj.length > 1 ? `<span><i class="sw dash" style="border-color:${r.color}"></i>Projection</span>` : "") +
